@@ -445,6 +445,7 @@ function Editor({order,onClose,onSave}){
   const init = order || {name:"",size:"",qty:1,ref_price:"",notes:"",photo:null};
   const [f,setF] = useState({...init, ref_price: init.ref_price ?? ""});
   const upd = (k)=> (e)=> setF({...f,[k]:e.target.value});
+  
   const submit = ()=>{
     if(!f.name.trim()) return;
     const payload = {
@@ -456,7 +457,26 @@ function Editor({order,onClose,onSave}){
     if(!order){ payload.status="new"; payload.arrival=[]; }
     onSave(payload);
   };
+
   return <Sheet title={order?"Edit order":"Add order"} onClose={onClose}>
+    
+    <label className="lab" style={{marginTop:0}}>Product Photo</label>
+    <div style={{display:"flex", gap:12, alignItems:"center", marginBottom:12}}>
+      <label className="thumb">
+        {f.photo ? <img src={f.photo} style={{width:"100%",height:"100%",objectFit:"cover"}}/> : "Photo"}
+      </label>
+      <label className="btn btn-out" style={{cursor:"pointer", padding:"8px 12px", fontSize:"13px", fontWeight:"600", width:"auto"}}>
+        {f.photo ? "Change Photo" : "Upload Photo"}
+        <input type="file" accept="image/*" style={{display:"none"}}
+          onChange={async e => {
+            if(e.target.files[0]){
+              const img = await compress(e.target.files[0]);
+              setF({...f, photo: img});
+            }
+          }} />
+      </label>
+    </div>
+
     <label className="lab">Product name</label>
     <input className="field" value={f.name} onChange={upd("name")} placeholder="Nike Tech Fleece Hoodie"/>
     <div style={{display:"flex",gap:10}}>
