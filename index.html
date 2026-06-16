@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orders</title>
+
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+<style>
+  :root{
+    --bg:#F6F7F5; --card:#fff; --text:#222826; --soft:#838B86; --line:#E7E9E4;
+    --green:#15936B; --greenSoft:#E6F3EE;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+  input,textarea,select,button{font-family:inherit;font-size:15px}
+  button{cursor:pointer;border:none;background:none}
+  img{display:block}
+  .wrap{max-width:640px;margin:0 auto;padding:0 14px}
+  .head{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+  .head-in{max-width:640px;margin:0 auto;padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
+  .h1{font-size:19px;font-weight:800;margin:0}
+  .row-btns{display:flex;gap:8px;align-items:center}
+  .chip{background:#fff;border:1px solid var(--line);color:var(--soft);border-radius:999px;
+        padding:7px 13px;font-size:14px;white-space:nowrap}
+  .chip.on{background:var(--text);color:#fff;border-color:var(--text)}
+  .tabs{display:flex;gap:8px;overflow-x:auto;padding:14px 0 4px}
+  .tabs::-webkit-scrollbar{display:none}
+  .btn{border-radius:13px;padding:13px;font-weight:700;font-size:15px}
+  .btn-green{background:var(--green);color:#fff;width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn-out{background:#fff;border:1px solid var(--line);color:var(--text)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+  .pill{border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700}
+  .thumb{width:56px;height:56px;border-radius:13px;border:1px solid var(--line);background:var(--bg);
+         object-fit:cover;flex:none;display:flex;align-items:center;justify-content:center;color:var(--soft);
+         font-size:12px;overflow:hidden;cursor:pointer}
+  .note{background:var(--bg);color:var(--soft);border-radius:13px;padding:10px 12px;font-size:14px;margin-top:12px}
+  .act{border-radius:13px;padding:11px;font-weight:700;font-size:14px;width:100%}
+  .field{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:13px;padding:11px 13px;outline:none}
+  .field:focus{border-color:var(--green)}
+  .lab{font-size:14px;font-weight:600;display:block;margin:10px 0 5px}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30;display:flex;align-items:flex-end;justify-content:center}
+  .sheet{background:#fff;width:100%;max-width:430px;border-radius:20px 20px 0 0;padding:20px;max-height:92vh;overflow:auto}
+  @media(min-width:560px){.overlay{align-items:center}.sheet{border-radius:20px}}
+  .x{color:var(--soft);font-size:24px;line-height:1}
+  .arr{width:52px;height:52px;border-radius:10px;border:1px solid var(--line);object-fit:cover}
+  .arr-add{width:52px;height:52px;border-radius:10px;border:1px dashed var(--line);color:var(--soft);
+           display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px}
+  .banner{border-radius:13px;padding:10px 13px;font-size:14px;margin:12px 0}
+  .muted{color:var(--soft);font-size:13px}
+  .center{text-align:center}
+  pre{background:#0f172a;color:#e2e8f0;border-radius:13px;padding:14px;overflow:auto;font-size:12px;line-height:1.5}
+  code{background:#eef0ec;padding:1px 5px;border-radius:5px;font-size:13px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ============================================================
+   1) PASTE YOUR THREE VALUES HERE  (see setup steps)
+   ============================================================ */
+const SUPABASE_URL      = "https://hxrrpwkdveiwhajdkrhz.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Lpnzut6VdMATM8yAyztp5A_zJSY1zvi";
+const TEAM_PASSWORD     = "Misho123$";          // change this to your own password
+/* ============================================================ */
+
+const PEOPLE = ["Owner", "Ahmad", "Rana"];
+
+const TONE = {
+  blue:{c:"#2D6FE0",s:"#E7EEFB"}, amber:{c:"#C7891C",s:"#FBF0DC"},
+  purple:{c:"#7A4FD0",s:"#EFE9FB"}, green:{c:"#15936B",s:"#E6F3EE"},
+  greenD:{c:"#0E5C46",s:"#E6F3EE"}, red:{c:"#C0392B",s:"#F7E3E0"}, grey:{c:"#838B86",s:"#EEEFEC"},
+};
+
+/* the relay: each status knows whose turn it is + what can happen next */
+const FLOW = {
+  new:          {label:"New — needs sourcing", tone:"blue", waiting:"Rana",
+    actions:[{to:"ordered",text:"Found & ordered",primary:true,needs:"price"},
+             {to:"not_found",text:"Couldn’t find it"}]},
+  not_found:    {label:"Not found", tone:"red", waiting:"Ahmad",
+    actions:[{to:"new",text:"Customer chose another — re-source",primary:true},
+             {to:"cancelled",text:"Cancel order"}]},
+  ordered:      {label:"Ordered — on its way", tone:"amber", waiting:"On its way",
+    actions:[{to:"at_warehouse",text:"Arrived at warehouse",primary:true,needs:"arrival"}]},
+  at_warehouse: {label:"At warehouse — show customer", tone:"purple", waiting:"Ahmad",
+    actions:[{to:"approved",text:"Customer approved",primary:true},
+             {to:"changes",text:"Wants changes / video"},
+             {to:"reorder",text:"Cancel & re-order (quality)"}]},
+  changes:      {label:"Changes requested", tone:"amber", waiting:"Rana",
+    actions:[{to:"at_warehouse",text:"Sent — back to customer",primary:true}]},
+  reorder:      {label:"Re-order — refund + new seller", tone:"red", waiting:"Rana",
+    actions:[{to:"new",text:"Refunded — re-sourcing",primary:true}]},
+  approved:     {label:"Approved — ready to ship", tone:"green", waiting:"Rana",
+    actions:[{to:"shipped",text:"Mark shipped",primary:true,needs:"tracking"}]},
+  shipped:      {label:"Shipped", tone:"greenD", waiting:"Done", actions:[]},
+  cancelled:    {label:"Cancelled", tone:"grey", waiting:"Done", actions:[]},
+};
+const NEEDS_AHMAD = ["not_found","at_warehouse"];
+const NEEDS_RANA  = ["new","changes","reorder","approved"];
+
+const configured =
+  SUPABASE_URL.startsWith("https://") && SUPABASE_ANON_KEY.length > 30;
+const sb = configured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+/* shrink photos before saving so the database stays small */
+function compress(file, max = 900, q = 0.7) {
+  return new Promise((res) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / img.width);
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        res(c.toDataURL("image/jpeg", q));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+const filesToData = async (list) => Promise.all(Array.from(list || []).map((f) => compress(f)));
+
+function priceNote(our, ref) {
+  const o = +our, r = +ref;
+  if (!o || !r) return null;
+  if (o <= r * 0.7) return { text: `good price · save $${(r - o).toFixed(0)}`, color: "var(--green)" };
+  if (o <= r) return { text: "fair price", color: "var(--soft)" };
+  return { text: `too high · $${(o - r).toFixed(0)} over`, color: "#C0392B" };
+}
+
+/* small localStorage helper that never throws */
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} },
+};
+
+/* ---------------- root ---------------- */
+function App(){
+  if(!configured) return <Setup/>;
+  const [who,setWho] = useState(store.get("who"));
+  if(!who) return <Gate onEnter={(p)=>{ store.set("who",p); setWho(p); }}/>;
+  return <Portal who={who} onLogout={()=>{ store.del("who"); setWho(null); }}/>;
+}
+
+/* ---------------- setup screen (shown until you paste keys) ---------------- */
+function Setup(){
+  return (
+    <div className="wrap" style={{paddingTop:24,paddingBottom:40}}>
+      <h1 className="h1" style={{fontSize:24}}>Almost there — 3 quick steps</h1>
+      <p className="muted" style={{marginTop:6}}>This screen shows until you paste your database keys into the file.</p>
+      <div className="card" style={{marginTop:16}}>
+        <b>1. Create a free database</b>
+        <p className="muted">Go to supabase.com, create a project, then open the <b>SQL Editor</b> and run the snippet in your SETUP.md file (it makes the orders table).</p>
+        <b>2. Copy two values</b>
+        <p className="muted">In Supabase → Project Settings → API, copy the <b>Project URL</b> and the <b>anon public key</b>.</p>
+        <b>3. Paste them at the top of index.html</b>
+        <pre>{`const SUPABASE_URL      = "https://xxxx.supabase.co";
+const SUPABASE_ANON_KEY = "eyJ...your long key...";
+const TEAM_PASSWORD     = "pick-a-password";`}</pre>
+        <p className="muted">Save, push to GitHub, and Vercel redeploys automatically. Done.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- sign in ---------------- */
+function Gate({onEnter}){
+  const [person,setPerson] = useState("Owner");
+  const [pw,setPw] = useState("");
+  const [err,setErr] = useState(false);
+  const go = ()=> pw===TEAM_PASSWORD ? onEnter(person) : setErr(true);
+  return (
+    <div className="wrap" style={{minHeight:"100vh",display:"flex",alignItems:"center"}}>
+      <div className="card" style={{width:"100%",maxWidth:340,margin:"0 auto"}}>
+        <h1 className="h1" style={{fontSize:24}}>Orders</h1>
+        <p className="muted" style={{marginTop:6}}>Choose your name and sign in.</p>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:18}}>
+          {PEOPLE.map(p=>(
+            <button key={p} onClick={()=>setPerson(p)} className="btn"
+              style={{padding:"10px 0",background:person===p?"var(--text)":"#fff",
+                      color:person===p?"#fff":"var(--text)",border:`1px solid ${person===p?"var(--text)":"var(--line)"}`}}>{p}</button>
+          ))}
+        </div>
+        <input type="password" className="field" style={{marginTop:14,borderColor:err?"#C0392B":"var(--line)"}}
+          placeholder="Team password" value={pw}
+          onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()}/>
+        <button className="btn btn-green" style={{marginTop:12}} onClick={go}>Sign in</button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- main ---------------- */
+function Portal({who,onLogout}){
+  const [orders,setOrders] = useState([]);
+  const [loading,setLoading] = useState(true);
+  const [err,setErr] = useState("");
+  const [busy,setBusy] = useState(false);
+  const [filter,setFilter] = useState("all");
+  const [editing,setEditing] = useState(null);   // "new" | order
+  const [acting,setActing] = useState(null);       // {order,action}
+  const [shipping,setShipping] = useState(false);
+
+  const load = useCallback(async ()=>{
+    try{
+      const { data, error } = await sb.from("orders").select("*").order("created_at",{ascending:false});
+      if(error) throw error;
+      setOrders(data||[]); setErr("");
+    }catch(e){ setErr("Could not load orders. "+(e.message||"")); }
+    finally{ setLoading(false); }
+  },[]);
+
+  useEffect(()=>{ load(); const t=setInterval(load,6000); return ()=>clearInterval(t); },[load]);
+
+  async function run(promise){
+    setBusy(true); setErr("");
+    try{ const r=await promise; if(r&&r.error) throw r.error; await load(); }
+    catch(e){ setErr("Couldn’t save. "+(e.message||"")); }
+    finally{ setBusy(false); }
+  }
+  const addOrder    = (p)=> run(sb.from("orders").insert({...p,last_by:who}));
+  const editOrder   = (id,p)=> run(sb.from("orders").update({...p,last_by:who}).eq("id",id));
+  const removeOrder = (id)=> run(sb.from("orders").delete().eq("id",id));
+  const shipMany = (ids,tracking)=> run((async()=>{
+    for(const id of ids){ const {error}=await sb.from("orders").update({status:"shipped",tracking,last_by:who}).eq("id",id); if(error) throw error; }
+    return {error:null};
+  })());
+
+  const runAction = (order,action)=> action.needs ? setActing({order,action}) : editOrder(order.id,{status:action.to});
+
+  const groups = {
+    all: orders.filter(o=>o.status!=="cancelled").length,
+    ahmad: orders.filter(o=>NEEDS_AHMAD.includes(o.status)).length,
+    rana: orders.filter(o=>NEEDS_RANA.includes(o.status)).length,
+    way: orders.filter(o=>o.status==="ordered").length,
+    shipped: orders.filter(o=>o.status==="shipped").length,
+  };
+  const shown = orders.filter(o=>
+    filter==="all"? o.status!=="cancelled" :
+    filter==="ahmad"? NEEDS_AHMAD.includes(o.status) :
+    filter==="rana"? NEEDS_RANA.includes(o.status) :
+    filter==="way"? o.status==="ordered" :
+    filter==="shipped"? o.status==="shipped" : true
+  );
+  const approved = orders.filter(o=>o.status==="approved");
+
+  return (
+    <div>
+      <div className="head">
+        <div className="head-in">
+          <h1 className="h1">Orders {busy && <span className="muted">· saving…</span>}</h1>
+          <div className="row-btns">
+            <span className="muted">{who}</span>
+            <button className="chip" onClick={onLogout} style={{padding:"4px 10px",fontSize:12}}>Sign out</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="wrap">
+        <div className="tabs">
+          <button className={"chip"+(filter==="all"?" on":"")} onClick={()=>setFilter("all")}>All ({groups.all})</button>
+          <button className={"chip"+(filter==="ahmad"?" on":"")} onClick={()=>setFilter("ahmad")}
+            style={filter==="ahmad"?{background:TONE.purple.c,borderColor:TONE.purple.c,color:"#fff"}:{color:TONE.purple.c}}>Needs Ahmad ({groups.ahmad})</button>
+          <button className={"chip"+(filter==="rana"?" on":"")} onClick={()=>setFilter("rana")}
+            style={filter==="rana"?{background:TONE.green.c,borderColor:TONE.green.c,color:"#fff"}:{color:TONE.green.c}}>Needs Rana ({groups.rana})</button>
+          <button className={"chip"+(filter==="way"?" on":"")} onClick={()=>setFilter("way")}
+            style={filter==="way"?{background:TONE.amber.c,borderColor:TONE.amber.c,color:"#fff"}:{color:TONE.amber.c}}>On the way ({groups.way})</button>
+          <button className={"chip"+(filter==="shipped"?" on":"")} onClick={()=>setFilter("shipped")}>Shipped ({groups.shipped})</button>
+        </div>
+
+        <div style={{display:"flex",gap:8,margin:"12px 0 4px"}}>
+          <button className="btn btn-green" onClick={()=>setEditing("new")}>＋ Add order</button>
+          {approved.length>0 &&
+            <button className="btn btn-out" style={{whiteSpace:"nowrap",width:"auto",padding:"13px 16px"}}
+              onClick={()=>setShipping(true)}>🚚 Ship together ({approved.length})</button>}
+        </div>
+
+        {err && <div className="banner" style={{background:TONE.red.s,color:TONE.red.c}}>{err}</div>}
+        {loading && <p className="center muted" style={{padding:"30px 0"}}>Loading…</p>}
+
+        <div style={{paddingBottom:30}}>
+          {!loading && shown.map(o=>(
+            <Row key={o.id} o={o}
+              onAction={(a)=>runAction(o,a)}
+              onEdit={()=>setEditing(o)}
+              onArrival={async (files)=>{ const imgs=await filesToData(files); editOrder(o.id,{arrival:[...(o.arrival||[]),...imgs]}); }}
+              onPhoto={async (file)=>{ const img=await compress(file); editOrder(o.id,{photo:img}); }}
+              onDelete={()=>{ if(confirm("Delete this order?")) removeOrder(o.id); }}/>
+          ))}
+          {!loading && shown.length===0 && <p className="center muted" style={{padding:"30px 0"}}>Nothing here.</p>}
+        </div>
+      </div>
+
+      {editing && <Editor order={editing==="new"?null:editing} onClose={()=>setEditing(null)}
+        onSave={async (o)=>{ editing==="new"? await addOrder(o) : await editOrder(editing.id,o); setEditing(null); }}/>}
+      {acting && <ActionModal {...acting} onClose={()=>setActing(null)}
+        onDone={async (patch)=>{ await editOrder(acting.order.id,{status:acting.action.to,...patch}); setActing(null); }}/>}
+      {shipping && <ShipTogether orders={approved} onClose={()=>setShipping(false)}
+        onShip={async (ids,t)=>{ await shipMany(ids,t); setShipping(false); }}/>}
+    </div>
+  );
+}
+
+/* ---------------- one order ---------------- */
+function Row({o,onAction,onEdit,onArrival,onPhoto,onDelete}){
+  const f = FLOW[o.status] || FLOW.new;
+  const t = TONE[f.tone];
+  const pn = priceNote(o.our_price,o.ref_price);
+  const showAdd = ["at_warehouse","changes","approved"].includes(o.status);
+  const arrival = o.arrival || [];
+  return (
+    <div className="card">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <span className="pill" style={{background:t.s,color:t.c}}>{f.label}</span>
+        {(f.waiting==="Done"||f.waiting==="On its way")
+          ? <span className="muted">{f.waiting}</span>
+          : <span className="muted">Waiting on <b style={{color:"var(--text)"}}>{f.waiting}</b></span>}
+      </div>
+
+      <div style={{display:"flex",gap:12}}>
+        <label className="thumb">
+          {o.photo ? <img src={o.photo} style={{width:"100%",height:"100%",objectFit:"cover"}}/> : "Photo"}
+          <input type="file" accept="image/*" style={{display:"none"}}
+            onChange={e=>e.target.files[0]&&onPhoto(e.target.files[0])}/>
+        </label>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:700,lineHeight:1.3}}>{o.name}</div>
+          <div className="muted">Size {o.size||"—"} · Qty {o.qty} · {o.customer||"—"}</div>
+          <div style={{fontSize:14,marginTop:2}}>
+            {o.our_price ? <>Paid <b>${o.our_price}</b></> : <span className="muted">Not ordered yet</span>}
+            {o.ref_price ? <span className="muted"> · was ${o.ref_price}</span> : null}
+            {pn && <span style={{color:pn.color,fontWeight:600}}> · {pn.text}</span>}
+          </div>
+        </div>
+      </div>
+
+      {o.notes && <div className="note">{o.notes}</div>}
+
+      {(arrival.length>0 || showAdd) && (
+        <div style={{marginTop:12}}>
+          <div className="muted" style={{fontWeight:600,marginBottom:6}}>Warehouse photos</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {arrival.map((src,i)=><img key={i} src={src} className="arr"/>)}
+            {showAdd && <label className="arr-add">＋
+              <input type="file" accept="image/*" multiple style={{display:"none"}}
+                onChange={e=>e.target.files.length&&onArrival(e.target.files)}/></label>}
+          </div>
+        </div>
+      )}
+
+      {o.status==="shipped" && o.tracking &&
+        <div className="banner" style={{background:"var(--greenSoft)",color:"var(--green)",fontWeight:600,marginBottom:0}}>Tracking: {o.tracking}</div>}
+
+      {f.actions.length>0 &&
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:12}}>
+          {f.actions.map(a=>(
+            <button key={a.to+a.text} className="act" onClick={()=>onAction(a)}
+              style={a.primary?{background:"var(--green)",color:"#fff"}:{background:"#fff",border:"1px solid var(--line)",color:"var(--text)"}}>{a.text}</button>
+          ))}
+        </div>}
+
+      <div style={{display:"flex",gap:14,marginTop:12,fontSize:14}}>
+        <button className="muted" style={{fontWeight:600}} onClick={onEdit}>Edit details</button>
+        <button className="muted" style={{fontWeight:600,marginLeft:"auto"}} onClick={onDelete}>Delete</button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- action needing input ---------------- */
+function ActionModal({action,order,onClose,onDone}){
+  const [price,setPrice] = useState("");
+  const [arrival,setArrival] = useState([]);
+  const [tracking,setTracking] = useState("");
+  const v = priceNote(price,order.ref_price);
+  let body, save;
+  if(action.needs==="price"){
+    body=(<>
+      <label className="lab">What did you pay? ($)</label>
+      <input className="field" type="number" autoFocus value={price} onChange={e=>setPrice(e.target.value)} placeholder="e.g. 28"/>
+      {order.ref_price ? <p className="muted" style={{marginTop:6}}>Customer used to pay ${order.ref_price}.</p>:null}
+      {v && <div className="banner" style={{background:v.color==="var(--green)"?"var(--greenSoft)":"#F7E3E0",color:v.color,fontWeight:600}}>{v.text}</div>}
+    </>);
+    save=()=> price && onDone({our_price:Number(price)});
+  } else if(action.needs==="arrival"){
+    body=(<>
+      <label className="lab">Add the warehouse photos</label>
+      <label className="btn btn-out" style={{display:"flex",flexDirection:"column",gap:4,padding:"22px"}}>
+        📷 Tap to add photos
+        <input type="file" accept="image/*" multiple style={{display:"none"}}
+          onChange={async e=>{ const imgs=await filesToData(e.target.files); setArrival(imgs); }}/>
+      </label>
+      {arrival.length>0 && <p style={{color:"var(--green)",marginTop:8}}>{arrival.length} photo(s) ready</p>}
+    </>);
+    save=()=> onDone({arrival:[...(order.arrival||[]),...arrival]});
+  } else {
+    body=(<>
+      <label className="lab">Tracking number</label>
+      <input className="field" autoFocus value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="e.g. SF1234567890"/>
+    </>);
+    save=()=> tracking && onDone({tracking});
+  }
+  return <Sheet title={action.text} onClose={onClose}>
+    {body}
+    <button className="btn btn-green" style={{marginTop:16}} onClick={save}>Confirm</button>
+  </Sheet>;
+}
+
+/* ---------------- ship several together ---------------- */
+function ShipTogether({orders,onClose,onShip}){
+  const [sel,setSel] = useState(orders.map(o=>o.id));
+  const [tracking,setTracking] = useState("");
+  const toggle = (id)=> setSel(s=> s.includes(id)? s.filter(x=>x!==id):[...s,id]);
+  return <Sheet title="Ship together" onClose={onClose}>
+    <p className="muted" style={{marginBottom:12}}>Pick the items in this shipment, then add one tracking number for all of them.</p>
+    <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:"40vh",overflow:"auto"}}>
+      {orders.map(o=>{ const on=sel.includes(o.id); return (
+        <button key={o.id} onClick={()=>toggle(o.id)} className="act" style={{textAlign:"left",display:"flex",gap:10,alignItems:"center",
+          background:on?"var(--greenSoft)":"#fff",border:`1px solid ${on?"var(--green)":"var(--line)"}`}}>
+          <span style={{width:18,height:18,borderRadius:5,flex:"none",background:on?"var(--green)":"transparent",border:`1.5px solid ${on?"var(--green)":"var(--soft)"}`}}/>
+          <span><b>{o.name}</b> · {o.customer||"—"} · Qty {o.qty}</span>
+        </button>); })}
+    </div>
+    <label className="lab">Tracking number for these {sel.length} item(s)</label>
+    <input className="field" value={tracking} onChange={e=>setTracking(e.target.value)} placeholder="e.g. SF1234567890"/>
+    <button className="btn btn-green" style={{marginTop:16}} onClick={()=> tracking && sel.length && onShip(sel,tracking)}>Mark {sel.length} as shipped</button>
+  </Sheet>;
+}
+
+/* ---------------- add / edit intake ---------------- */
+function Editor({order,onClose,onSave}){
+  const init = order || {name:"",size:"",qty:1,ref_price:"",notes:"",photo:null};
+  const [f,setF] = useState({...init, ref_price: init.ref_price ?? ""});
+  const upd = (k)=> (e)=> setF({...f,[k]:e.target.value});
+  const submit = ()=>{
+    if(!f.name.trim()) return;
+    const payload = {
+      name:f.name.trim(), size:f.size||null, qty:parseInt(f.qty)||1,
+      customer:f.customer||null, notes:f.notes||null,
+      ref_price: f.ref_price==="" || f.ref_price==null ? null : Number(f.ref_price),
+      photo: f.photo || null,
+    };
+    if(!order){ payload.status="new"; payload.arrival=[]; }
+    onSave(payload);
+  };
+  return <Sheet title={order?"Edit order":"Add order"} onClose={onClose}>
+    <label className="lab">Product name</label>
+    <input className="field" value={f.name} onChange={upd("name")} placeholder="Nike Tech Fleece Hoodie"/>
+    <div style={{display:"flex",gap:10}}>
+      <div style={{flex:1}}><label className="lab">Size</label><input className="field" value={f.size||""} onChange={upd("size")} placeholder="L"/></div>
+      <div style={{flex:1}}><label className="lab">Quantity</label><input className="field" type="number" value={f.qty} onChange={upd("qty")}/></div>
+    </div>
+    <label className="lab">Customer</label>
+    <input className="field" value={f.customer||""} onChange={upd("customer")} placeholder="Hala"/>
+    <label className="lab">Old price we used to pay ($) — optional</label>
+    <input className="field" type="number" value={f.ref_price} onChange={upd("ref_price")} placeholder="75"/>
+    <label className="lab">Note</label>
+    <textarea className="field" rows="2" value={f.notes||""} onChange={upd("notes")} placeholder="e.g. medium size, stone-grey, check stitching"/>
+    <button className="btn btn-green" style={{marginTop:16}} onClick={submit}>Save</button>
+  </Sheet>;
+}
+
+/* ---------------- shared sheet ---------------- */
+function Sheet({title,onClose,children}){
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+          <h2 className="h1">{title}</h2>
+          <button className="x" onClick={onClose}>×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
